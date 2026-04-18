@@ -17,6 +17,7 @@ public sealed class DreamUserInterfaceStateManager {
     [Dependency] private readonly IBaseClient _client = default!;
 
     private ISawmill _sawmill = default!;
+    private bool _launcherConnectKicked;
 
     public void Initialize() {
         _sawmill = Logger.GetSawmill("opendream.state");
@@ -88,12 +89,15 @@ public sealed class DreamUserInterfaceStateManager {
     }
 
     private void RequestMainMenuOrLauncherReconnect() {
-        if (_gameController.LaunchState is { FromLauncher: true, ConnectEndpoint: { } endpoint }) {
+        if (!_launcherConnectKicked
+            && _gameController.LaunchState is { FromLauncher: true, ConnectEndpoint: { } endpoint }) {
+            _launcherConnectKicked = true;
             _sawmill.Info($"Launcher-mode detected at idle; connecting to {endpoint}");
             _client.ConnectToServer(endpoint);
             return;
         }
 
+        _sawmill.Info("Falling back to MainMenuState (launcher connect unavailable or already attempted)");
         _stateManager.RequestStateChange<MainMenuState>();
     }
 }
