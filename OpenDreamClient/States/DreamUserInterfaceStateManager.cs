@@ -60,32 +60,33 @@ public sealed class DreamUserInterfaceStateManager {
                     break;
             }
         });
+    }
 
-        // If the launcher-driven auto-connect already advanced RunLevel before we subscribed,
-        // drive the initial state from the current level instead of waiting on a future event.
+    /// <summary>
+    ///     Called from EntryPoint.PostInit() after the UI manager is ready. Drives the initial
+    ///     state from the current RunLevel (in case Robust's auto-connect raced ahead of our
+    ///     event subscription) and, when launched by the SS14 launcher, explicitly kicks a
+    ///     connect to LaunchState.ConnectEndpoint — stock OpenDream's MainMenu splash is a
+    ///     dead-end in launcher mode since Robust rejects manual ConnectToServer calls there.
+    /// </summary>
+    public void PostInitialize() {
+        _sawmill.Info($"Post-init: RunLevel={_client.RunLevel}");
+
         switch (_client.RunLevel) {
             case ClientRunLevel.InGame:
             case ClientRunLevel.Connected:
             case ClientRunLevel.SinglePlayerGame:
                 _stateManager.RequestStateChange<InGameState>();
-                break;
+                return;
 
             case ClientRunLevel.Connecting:
                 _stateManager.RequestStateChange<ConnectingState>();
-                break;
-
-            default:
-                RequestMainMenuOrLauncherReconnect();
-                break;
+                return;
         }
+
+        RequestMainMenuOrLauncherReconnect();
     }
 
-    /// <summary>
-    ///     If the client was launched by the SS14 launcher but ended up sitting at the
-    ///     Initialize run-level (no auto-connect fired, or it fired and bounced back),
-    ///     explicitly kick a connect to LaunchState.ConnectEndpoint instead of parking at the
-    ///     splash screen — the splash's Connect button is a no-op in launcher mode.
-    /// </summary>
     private void RequestMainMenuOrLauncherReconnect() {
         if (_gameController.LaunchState is { FromLauncher: true, ConnectEndpoint: { } endpoint }) {
             _sawmill.Info($"Launcher-mode detected at idle; connecting to {endpoint}");

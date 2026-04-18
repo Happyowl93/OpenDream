@@ -87,6 +87,10 @@ public sealed class EntryPoint : GameClient {
 
         _netManager.RegisterNetMessage<MsgAllAppearances>(RxAllAppearances);
 
+        // Drive the initial UI state and kick launcher-mode auto-connect now that the UI
+        // manager is fully set up (StateRoot is not ready during Init()).
+        IoCManager.Resolve<DreamUserInterfaceStateManager>().PostInitialize();
+
         if (_configurationManager.GetCVar(CVars.DisplayCompat))
             _dreamInterface.OpenAlert(
                 "Compatibility Mode Warning",
